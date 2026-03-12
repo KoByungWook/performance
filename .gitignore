@@ -1,0 +1,15 @@
+# default
+node_modules/
+dist/
+.env
+
+# data dir
+data/
+logs/
+reports/
+
+# packaging file
+*.tar
+
+# other
+MyToken.json

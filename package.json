@@ -1,0 +1,30 @@
+{
+  "name": "besu-load-injector",
+  "version": "1.0.0",
+  "description": "Besu 네트워크 컨트랙트 콜 부하 유입 API Gateway",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "npm run build && npx pm2 start ecosystem.config.js --env development",
+    "start": "npm run build && npx pm2 start ecosystem.config.js",
+    "reload": "npm run build && npx pm2 restart ecosystem.config.js --update-env",
+    "stop": "npx pm2 stop besu-loader && npx pm2 delete besu-loader"
+  },
+  "dependencies": {
+    "@fastify/swagger": "^8.15.0",
+    "@fastify/swagger-ui": "^4.2.0",
+    "ethers": "^6.13.0",
+    "fastify": "^4.28.0",
+    "ioredis": "^5.9.3",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

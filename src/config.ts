@@ -1,0 +1,19 @@
+export const config = {
+  port: parseInt(process.env.PORT ?? '3000'),
+  besuRpcUrl: process.env.BESU_RPC_URL ?? 'http://localhost:8545',
+  accountDataDir: process.env.ACCOUNT_DATA_DIR ?? './data',
+  instanceId: parseInt(process.env.INSTANCE_ID ?? '0'),
+  gasPriceWei: process.env.GAS_PRICE_WEI ?? '0',
+  rpcTimeoutMs: parseInt(process.env.RPC_TIMEOUT_MS ?? '5000'),
+  receiptTimeoutMs: parseInt(process.env.RECEIPT_TIMEOUT_MS ?? '30000'),
+  receiptPollMs: parseInt(process.env.RECEIPT_POLL_MS ?? '500'),
+  tokenDecimals: parseInt(process.env.TOKEN_DECIMALS ?? '18'),
+  redisUrl: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  redisUsername: process.env.REDIS_USERNAME ?? '',
+  redisPassword: process.env.REDIS_PASSWORD ?? '',
+  nonceTtlSeconds: parseInt(process.env.NONCE_TTL_SECONDS ?? '86400'), // 기본 24시간
+  reportDir: process.env.REPORT_DIR ?? './reports',
+  perfFetchConcurrency: parseInt(process.env.PERF_FETCH_CONCURRENCY ?? '20'),
+  perfSyncMaxBlockRange: parseInt(process.env.PERF_SYNC_MAX_BLOCK_RANGE ?? '1000'),
+  perfAsyncMaxBlockRange: parseInt(process.env.PERF_ASYNC_MAX_BLOCK_RANGE ?? '10000'),
+} as const;
