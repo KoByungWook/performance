@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { FastifyInstance } from 'fastify';
 import {
   extractSync,
@@ -194,6 +196,59 @@ export async function perfRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(202).send({ jobId, status: 'pending', jsonFile, htmlFile });
       } catch (err) {
         logger.error('extractAsync failed', err);
+        return reply.status(500).send({ error: String(err) });
+      }
+    },
+  );
+
+  // GET /perf/reports/:filename — 리포트 파일 다운로드
+  app.get<{ Params: { filename: string } }>(
+    '/reports/:filename',
+    {
+      schema: {
+        tags: ['Performance'],
+        summary: '리포트 파일 다운로드',
+        description: '/perf/blocks 또는 /perf/blocks/async 결과로 생성된 HTML/JSON 파일을 다운로드한다.\n\n파일명 형식: `{startBlock}-{endBlock}.html` 또는 `{startBlock}-{endBlock}.json`',
+        params: {
+          type: 'object',
+          properties: {
+            filename: { type: 'string', description: '파일명 (예: 100-200.html)' },
+          },
+        },
+        response: {
+          400: { description: '잘못된 파일명', ...errorResponse },
+          404: { description: '파일 없음', ...errorResponse },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { filename } = request.params;
+
+      // 경로 탈출 방지: 파일명만 허용
+      if (filename !== path.basename(filename) || filename.includes('..')) {
+        return reply.status(400).send({ error: 'Invalid filename' });
+      }
+
+      const ext = path.extname(filename).toLowerCase();
+      if (ext !== '.html' && ext !== '.json') {
+        return reply.status(400).send({ error: 'Only .html and .json files are supported' });
+      }
+
+      const filePath = path.join(config.reportDir, filename);
+
+      try {
+        const content = await fs.readFile(filePath);
+        const contentType = ext === '.html' ? 'text/html; charset=utf-8' : 'application/json; charset=utf-8';
+        reply
+          .header('Content-Type', contentType)
+          .header('Content-Disposition', `attachment; filename="${filename}"`)
+          .status(200)
+          .send(content);
+      } catch (err: any) {
+        if (err.code === 'ENOENT') {
+          return reply.status(404).send({ error: `File not found: ${filename}` });
+        }
+        logger.error('Report download failed', err);
         return reply.status(500).send({ error: String(err) });
       }
     },
