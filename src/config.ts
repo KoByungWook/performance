@@ -16,4 +16,7 @@ export const config = {
   perfFetchConcurrency: parseInt(process.env.PERF_FETCH_CONCURRENCY ?? '20'),
   perfSyncMaxBlockRange: parseInt(process.env.PERF_SYNC_MAX_BLOCK_RANGE ?? '1000'),
   perfAsyncMaxBlockRange: parseInt(process.env.PERF_ASYNC_MAX_BLOCK_RANGE ?? '10000'),
+  batchSize: parseInt(process.env.BATCH_SIZE ?? '100'),
+  batchFlushIntervalMs: parseInt(process.env.BATCH_FLUSH_INTERVAL_MS ?? '200'),
+  batchQueueMax: parseInt(process.env.BATCH_QUEUE_MAX ?? '50000'),
 } as const;

@@ -4,6 +4,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config';
 import { logger } from './utils/logger';
 import { nonceService } from './services/nonce.service';
+import { startBatchWorker, stopBatchWorker } from './services/batch-queue.service';
 import { accountRoutes } from './routes/account.routes';
 import { contractRoutes } from './routes/contract.routes';
 import { manageRoutes } from './routes/manage.routes';
@@ -72,6 +73,7 @@ app.setErrorHandler((error, _request, reply) => {
 const start = async () => {
   try {
     nonceService.initialize();
+    startBatchWorker();
     await app.listen({ port: config.port, host: '0.0.0.0' });
     logger.info(`Server listening on port ${config.port}`);
   } catch (err) {
@@ -83,6 +85,7 @@ const start = async () => {
 // Graceful shutdown: Redis 연결 종료
 const shutdown = async () => {
   logger.info('Shutting down...');
+  stopBatchWorker();
   await nonceService.close();
   await app.close();
   process.exit(0);

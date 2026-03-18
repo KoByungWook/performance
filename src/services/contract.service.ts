@@ -348,6 +348,62 @@ export async function getReceipt(txHash: string): Promise<ReceiptResult | null> 
 }
 
 // ────────────────────────────────────────────────────────────
+// POST /tx/send/batch — 서명만 수행, 큐 저장용
+// ────────────────────────────────────────────────────────────
+export interface SignedTxEntry {
+  signedTx: string;
+  txHash: string;
+  walletAddress: string;
+  contractAddress: string;
+  functionName: string;
+  nonce: number;
+  gasLimit: string;
+}
+
+export async function signContractTx(req: ContractSendRequest): Promise<SignedTxEntry> {
+  const { walletAddress, privateKey, contractAddress, abi, functionName, params, tokenParamIndexes, gasLimit: gasLimitInput } = req;
+
+  const iface = new ethers.Interface(abi);
+  const processedParams = processParams(params, tokenParamIndexes);
+  const data = iface.encodeFunctionData(functionName, processedParams);
+
+  const chainId = await getChainId();
+  const wallet = new ethers.Wallet(privateKey);
+
+  // nonce 낭비를 피하기 위해 estimateGas는 nonce 할당 전에 수행
+  const gasLimit = await resolveGasLimit(gasLimitInput, {
+    from: walletAddress,
+    to: contractAddress,
+    data,
+    value: 0n,
+  });
+
+  const nonce = await nonceService.allocateNonce(walletAddress);
+
+  try {
+    const tx: ethers.TransactionRequest = {
+      to: contractAddress,
+      value: 0n,
+      nonce,
+      gasLimit,
+      gasPrice: BigInt(config.gasPriceWei),
+      chainId,
+      data,
+      type: 0,
+    };
+
+    const signedTx = await wallet.signTransaction(tx);
+    const txHash = ethers.keccak256(signedTx);
+    logger.debug(`Signed (queued): ${txHash} from=${walletAddress} nonce=${nonce} gasLimit=${gasLimit}`);
+
+    return { signedTx, txHash, walletAddress, contractAddress, functionName, nonce, gasLimit: gasLimit.toString() };
+  } catch (err) {
+    await nonceService.releaseNonce(walletAddress, nonce);
+    throw err;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 // POST /tx/deploy — 컨트랙트 배포
 // ────────────────────────────────────────────────────────────
 export interface DeployRequest {

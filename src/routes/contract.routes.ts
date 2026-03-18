@@ -12,6 +12,7 @@ import {
   DeployRequest,
   EthTransferRequest,
 } from '../services/contract.service';
+import { signAndEnqueue, queueDepth } from '../services/batch-queue.service';
 import { logger } from '../utils/logger';
 
 // ── 공통 스키마 ──────────────────────────────────────────────────
@@ -357,6 +358,47 @@ export async function contractRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(200).send(result);
       } catch (err) {
         logger.error('getReceipt failed', err);
+        return reply.status(500).send({ error: String(err) });
+      }
+    },
+  );
+
+  // POST /tx/send/batch — 서명 후 인메모리 큐 저장, txHash 즉시 반환
+  app.post<{ Body: ContractSendRequest }>(
+    '/send/batch',
+    {
+      schema: {
+        tags: ['Transaction'],
+        summary: '컨트랙트 트랜잭션 배치 전송 (서명 후 큐 저장, txHash 즉시 반환)',
+        description:
+          '트랜잭션에 서명하여 인메모리 큐에 저장하고 txHash를 즉시 반환한다.\n\n' +
+          '백그라운드 워커가 큐에서 트랜잭션을 꺼내 JSON-RPC 배치로 노드에 전송한다.\n\n' +
+          '큐가 가득 찬 경우 HTTP 429를 반환하고 해당 nonce는 즉시 반환된다.',
+        body: contractSendBodySchema,
+        response: {
+          200: {
+            description: '큐 저장 성공',
+            type: 'object',
+            properties: {
+              txHash:     { type: 'string',  description: '서명된 트랜잭션 해시 (전송 전 결정론적 계산)' },
+              status:     { type: 'string',  enum: ['queued'] },
+              queueDepth: { type: 'integer', description: '현재 큐 크기' },
+            },
+          },
+          429: { description: '큐 용량 초과 (BATCH_QUEUE_MAX)', ...errorResponse },
+          500: { description: '서버 오류', ...errorResponse },
+        },
+      },
+    },
+    async (request, reply) => {
+      try {
+        const result = await signAndEnqueue(request.body);
+        if (!result.queued) {
+          return reply.status(429).send({ error: `Queue is full (max=${result.queueDepth})` });
+        }
+        return reply.status(200).send({ txHash: result.txHash, status: 'queued', queueDepth: result.queueDepth });
+      } catch (err) {
+        logger.error('signAndEnqueue failed', err);
         return reply.status(500).send({ error: String(err) });
       }
     },
